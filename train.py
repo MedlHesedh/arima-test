@@ -1,9 +1,21 @@
 import pandas as pd
 import statsmodels.api as sm
 import pickle
+from sqlalchemy import create_engine
 
-# Load dataset
-df = pd.read_csv("materials_prices.csv", parse_dates=["date"])
+# Database connection parameters
+db_params = {
+    'host': 'localhost',
+    'database': 'materials_db',
+    'user': 'postgres',
+    'password': 'your_password',
+    'port': '5432'
+}
+
+# Load dataset from PostgreSQL
+
+engine = create_engine(f'postgresql://{db_params["user"]}:{db_params["password"]}@{db_params["host"]}:{db_params["port"]}/{db_params["database"]}')
+df = pd.read_sql('SELECT date, material_name, price FROM materials_prices', engine, parse_dates=["date"])
 df.set_index("date", inplace=True)
 
 # Dictionary to store models
