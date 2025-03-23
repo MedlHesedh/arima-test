@@ -11,7 +11,7 @@ def train_models(connection_string=""):
     
     try:
         # Load dataset from PostgreSQL
-        engine = create_engine(connection_string)
+        engine = create_engine(connection_string, connect_args={"sslmode": "disable"})
         df = pd.read_sql("SELECT * FROM sales_data", engine)
         df.set_index("date", inplace=True)
         
