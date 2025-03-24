@@ -10,33 +10,56 @@ def train_models(connection_string=""):
     results = {"success": [], "errors": []}
     
     try:
-        # Load dataset from PostgreSQL
+        # Load datasets from PostgreSQL
         engine = create_engine(connection_string, connect_args={"sslmode": "disable"})
-        df = pd.read_sql("SELECT * FROM sales_data", engine)
-        df.set_index("date", inplace=True)
         
-        # Train an ARIMA model for each material
-        for material in df["material"].unique():
+        # Load material data
+        material_df = pd.read_sql('SELECT date, cost, material FROM material_history', engine, parse_dates=["date"])
+        material_df.set_index("date", inplace=True)
+        
+        # Load labor data
+        labor_df = pd.read_sql('SELECT date, cost, labor FROM labor_history', engine, parse_dates=["date"])
+        labor_df.set_index("date", inplace=True)
+        
+        # Train models for materials
+        for material in material_df["material"].unique():
             try:
-                data = df[df["material"] == material]["cost"]
-                
-                # Fit ARIMA model (you can tune p, d, q)
-                model = sm.tsa.ARIMA(data, order=(2, 1, 2))  # ARIMA(p,d,q)
+                data = material_df[material_df["material"] == material]["cost"]
+                model = sm.tsa.ARIMA(data, order=(2, 1, 2))
                 model_fit = model.fit()
                 
-                # Encode material name for safe file naming
-                encoded_material = base64.b64encode(material.encode()).decode()
+                encoded_name = base64.b64encode(f"material_{material}".encode()).decode()
                 
-                # Save the model
-                with open(f"arima_{encoded_material}.pkl", "wb") as f:
+                with open(f"arima_{encoded_name}.pkl", "wb") as f:
                     pickle.dump(model_fit, f)
                 
-                trained_models[material] = model_fit
-                results["success"].append(material)
-                print(f"Successfully trained model for {material}")
+                trained_models[f"material_{material}"] = model_fit
+                results["success"].append(f"material_{material}")
+                print(f"Successfully trained model for material: {material}")
             except Exception as e:
-                error_msg = f"Error training model for {material}: {str(e)}"
-                results["errors"].append({"material": material, "error": str(e)})
+                error_msg = f"Error training model for material {material}: {str(e)}"
+                results["errors"].append({"item": f"material_{material}", "error": str(e)})
+                print(error_msg)
+                continue
+        
+        # Train models for labor
+        for labor in labor_df["labor"].unique():
+            try:
+                data = labor_df[labor_df["labor"] == labor]["cost"]
+                model = sm.tsa.ARIMA(data, order=(2, 1, 2))
+                model_fit = model.fit()
+                
+                encoded_name = base64.b64encode(f"labor_{labor}".encode()).decode()
+                
+                with open(f"arima_{encoded_name}.pkl", "wb") as f:
+                    pickle.dump(model_fit, f)
+                
+                trained_models[f"labor_{labor}"] = model_fit
+                results["success"].append(f"labor_{labor}")
+                print(f"Successfully trained model for labor: {labor}")
+            except Exception as e:
+                error_msg = f"Error training model for labor {labor}: {str(e)}"
+                results["errors"].append({"item": f"labor_{labor}", "error": str(e)})
                 print(error_msg)
                 continue
         

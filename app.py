@@ -34,24 +34,27 @@ for file in os.listdir():
 
 @app.route('/predict', methods=['GET'])
 def predict():
-    material = request.args.get("material_name")
-    print(f"Predicting for material: {material}")
-    steps = int(request.args.get("steps", 1))  # Number of months to predict
+    item_type = request.args.get("type")  # 'material' or 'labor'
+    item_name = request.args.get("name")
+    print(f"Predicting for {item_type}: {item_name}")
+    steps = int(request.args.get("steps", 1))
 
-    if material not in models:
-        return jsonify({"error": "Material not found"}), 404
+    full_name = f"{item_type}_{item_name}"
+    if full_name not in models:
+        return jsonify({"error": f"{item_type} not found"}), 404
 
-    model = models[material]
+    model = models[full_name]
     forecast = model.forecast(steps=steps)
 
     return jsonify({
-        "material": material,
+        "type": item_type,
+        "name": item_name,
         "forecast": list(forecast)
     })
 
 @app.route('/train', methods=['GET'])
 def train():
-    connection_string = request.args.get("connection_string", "")
+    connection_string =  f'postgresql://postgres.viculrdtittnlgikngxg:9ouZiUP4JK6F45ST@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres'
     
     # Call the training function
     success, results = train_models(connection_string)
